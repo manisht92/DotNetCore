@@ -1,8 +1,13 @@
+using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 using DatingApp.API.Data;
 using DatingApp.API.Dtos;
 using DatingApp.API.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace DatingApp.API.Controllers
 {
@@ -20,9 +25,9 @@ namespace DatingApp.API.Controllers
         {
             var user = userForRegister.Username.ToLower();
             if (await _repo.UserExist(user))
-                ModelState.AddModelError("Username","Username already exist");
+                ModelState.AddModelError("Username", "Username already exist");
 
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var userToCreate = new User
@@ -32,6 +37,31 @@ namespace DatingApp.API.Controllers
 
             var createUser = await _repo.Register(userToCreate, userForRegister.Password);
             return StatusCode(201);
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody]UserForLogin userForLogin)
+        {
+            var userRepo = await _repo.Login(userForLogin.Username, userForLogin.Password);
+            if (userRepo != null)
+                return Unauthorized();
+
+            // generate Token
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes("super secret key");
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]{
+                    new Claim(ClaimTypes.NameIdentifier, userRepo.Id.ToString()),
+                    new Claim(ClaimTypes.Name,userRepo.Username)
+                }),
+                Expires = DateTime.Now.AddDays(1),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
+
+            return Ok(new { tokenString });
         }
     }
 }
