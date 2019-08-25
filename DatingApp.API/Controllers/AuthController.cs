@@ -23,8 +23,10 @@ namespace DatingApp.API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody]UserForRegister userForRegister)
         {
-            var user = userForRegister.Username.ToLower();
-            if (await _repo.UserExist(user))
+            if (string.IsNullOrEmpty(userForRegister.Username))
+                userForRegister.Username = userForRegister.Username.ToLower();
+
+            if (await _repo.UserExist(userForRegister.Username))
                 ModelState.AddModelError("Username", "Username already exist");
 
             if (!ModelState.IsValid)
@@ -42,26 +44,35 @@ namespace DatingApp.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody]UserForLogin userForLogin)
         {
-            var userRepo = await _repo.Login(userForLogin.Username.ToLower(), userForLogin.Password);
-            if (userRepo == null)
-                return Unauthorized();
+            // try
+            // {
+                //throw new Exception("Computer says no!");
 
-            // generate Token
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes("super secret key");
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new Claim[]{
+                var userRepo = await _repo.Login(userForLogin.Username.ToLower(), userForLogin.Password);
+                if (userRepo == null)
+                    return Unauthorized();
+
+                // generate Token
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.ASCII.GetBytes("super secret key");
+                var tokenDescriptor = new SecurityTokenDescriptor
+                {
+                    Subject = new ClaimsIdentity(new Claim[]{
                     new Claim(ClaimTypes.NameIdentifier, userRepo.Id.ToString()),
                     new Claim(ClaimTypes.Name,userRepo.Username)
                 }),
-                Expires = DateTime.Now.AddDays(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature)
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
+                    Expires = DateTime.Now.AddDays(1),
+                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature)
+                };
+                var token = tokenHandler.CreateToken(tokenDescriptor);
+                var tokenString = tokenHandler.WriteToken(token);
 
-            return Ok(new { tokenString });
+                return Ok(new { tokenString });
+            // }
+            // catch
+            // {
+            //     return StatusCode(500, "Computer really says no!");
+            // }
         }
     }
 }
