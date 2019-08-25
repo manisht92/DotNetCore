@@ -6,23 +6,32 @@ import { map } from 'rxjs/operators';
   providedIn: 'root'
 })
 export class AuthService {
-  baseUrl = 'https://localhost:5001/api/auth/';
+  private baseUrl = 'https://localhost:5001/api/auth/';
   userToken: any;
 
-constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) { }
 
-login(model: any) {
-  const header = new HttpHeaders({'content-type': 'application/json'});
-  const options = {headers: header};
+  login(model: any) {
+    const header = new HttpHeaders({'content-type': 'application/json'});
+    const options = {headers: header};
 
-  return this.http.post(this.baseUrl + 'login', model, options).pipe(map((response: Response) => {
-    const user = response;
-    if (user) {
-      localStorage.setItem('token', user['tokenString']);
-      this.userToken = user['tokenString'];
-    }
-    return response;
-  }));
-}
+    return this.http.post(this.baseUrl + 'login', model, this.requestOptions()).pipe(map((response: Response) => {
+      const user = response;
+      if (user) {
+        localStorage.setItem('token', user['tokenString']);
+        this.userToken = user['tokenString'];
+      }
+      return response;
+    }));
+  }
+
+  register(model: any) {
+    return this.http.post(this.baseUrl + 'register', model, this.requestOptions());
+  }
+
+  private requestOptions() {
+    const header = new HttpHeaders({'content-type': 'application/json'});
+    return {headers: header};
+  }
 
 }
